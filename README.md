@@ -1,2 +1,2 @@
 # mellivora
-Mellivora is a modification of github.com/timshannon/badgerhold built for raft and transactions.
+Mellivora is a modification of [BadgerHold](https://github.com/timshannon/badgerhold) built for raft and transactions.
