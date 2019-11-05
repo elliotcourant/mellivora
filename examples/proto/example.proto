@@ -1,6 +1,0 @@
-syntax = "proto3";
-
-message Test {
-    uint64 Id = 1; //`badgerhold:"index"`
-    string Name = 2; //`badgerhold:"index"`
-}

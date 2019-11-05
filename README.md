@@ -1,2 +1,3 @@
 # mellivora
-Mellivora is a modification of [BadgerHold](https://github.com/timshannon/badgerhold) built for raft and transactions.
+mellivora is a relational struct based database that is distributed via raft and built on top of
+BadgerDB.
