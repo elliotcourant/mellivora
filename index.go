@@ -1,9 +1,11 @@
 package mellivora
 
-import (
-	"github.com/elliotcourant/meles"
-)
+type IndexItem map[uint32]interface{}
 
-type Index struct {
-	itr *meles.Iterator
+type IndexIterator interface {
+	Seek(values ...interface{})
+	Next()
+	Valid() bool
+
+	Item() (key []interface{}, value IndexItem)
 }
