@@ -26,6 +26,8 @@ github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/elliotcourant/buffers v0.0.0-20190811025309-24fdba97ca9b h1:hnBfbE6sWwWGpCiFwSWvzsOxxuEujfmk+xYr+a98pHc=
 github.com/elliotcourant/buffers v0.0.0-20190811025309-24fdba97ca9b/go.mod h1:9+oLElsEQnueTyoq0dyr6RiJwELNE+YtLXh4BNAsnKg=
+github.com/elliotcourant/buffers v0.0.0-20191120003902-aa0973d81010 h1:KuF3wfFvhyWo3MsjFvklRXfx1W+eSmcaaNxGe2lTCFU=
+github.com/elliotcourant/buffers v0.0.0-20191120003902-aa0973d81010/go.mod h1:9+oLElsEQnueTyoq0dyr6RiJwELNE+YtLXh4BNAsnKg=
 github.com/elliotcourant/meles v0.0.0-20191119235913-0df6ba24e8d9 h1:WN2Yxjj9dAgnO9c/fmkBzzcRnAsFwPbAjYY5Se5t85Y=
 github.com/elliotcourant/meles v0.0.0-20191119235913-0df6ba24e8d9/go.mod h1:tUErOQsMA8i8RKaiF3lqvINTrvNygGbVXOjiSRgb5yI=
 github.com/elliotcourant/timber v0.0.0-20190831033938-85b1f62dde82 h1:rAx7YfNNnDIik1N7Zj/lQjt2b/5aejQLGQEc+v18t7M=

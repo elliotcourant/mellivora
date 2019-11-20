@@ -3,6 +3,7 @@ package mellivora
 import (
 	"fmt"
 	"github.com/ahmetb/go-linq/v3"
+	"github.com/elliotcourant/buffers"
 	"reflect"
 )
 
@@ -12,23 +13,27 @@ var (
 	_ FieldSet = &fieldSet{}
 )
 
-type Model interface {
-	ModelId() uint32
-	Name() string
-	Fields() FieldSet
-	PrimaryKey() FieldSet
-}
+type (
+	Model interface {
+		ModelId() uint32
+		Name() string
+		Fields() FieldSet
+		PrimaryKey() FieldSet
+	}
 
-type Field interface {
-	FieldId() uint32
-	Name() string
-}
+	Field interface {
+		FieldId() uint32
+		Name() string
+		IsPrimaryKey() bool
+		Reflection() reflect.StructField
+	}
 
-type FieldSet interface {
-	GetAll() []Field
-	GetById(fieldId uint32) Field
-	GetByName(fieldName string) Field
-}
+	FieldSet interface {
+		GetAll() []Field
+		GetById(fieldId uint32) Field
+		GetByName(fieldName string) Field
+	}
+)
 
 type modelInfo struct {
 	modelId    uint32
@@ -50,15 +55,31 @@ func (m *modelInfo) Fields() FieldSet {
 }
 
 func (m *modelInfo) PrimaryKey() FieldSet {
-	return m.primaryKey
+	return nil
 }
 
 type modelField struct {
 	model *modelInfo
 
-	fieldId    uint32
-	name       string
-	reflection reflect.StructField
+	fieldId      uint32
+	name         string
+	isPrimaryKey bool
+	reflection   reflect.StructField
+}
+
+func (m *modelField) IsPrimaryKey() bool {
+	return m.isPrimaryKey
+}
+
+func (m *modelField) Reflection() reflect.StructField {
+	return m.reflection
+}
+
+func (m *modelField) GetKey(record reflect.Value) []byte {
+	buf := buffers.NewBytesBuffer()
+	buf.AppendByte(datumKeyPrefix)
+	buf.AppendUint32(m.model.ModelId())
+
 }
 
 func (m *modelField) FieldId() uint32 {
