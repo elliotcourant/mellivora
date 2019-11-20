@@ -29,3 +29,18 @@ func TestGetBaseTypeOf(t *testing.T) {
 		})
 	})
 }
+
+func TestGetModelInfo(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		type DataNode struct {
+			DataNodeId uint64 `m:"pk,serial"`
+			Address    string `m:"unique:uq_address_port"`
+			Port       int32  `m:"unique:uq_address_port"`
+			User       string
+			Password   string
+			Healthy    bool
+		}
+		info := getModelInfo(DataNode{})
+		assert.Equal(t, "DataNode", info.Name())
+	})
+}

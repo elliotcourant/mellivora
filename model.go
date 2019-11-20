@@ -3,8 +3,9 @@ package mellivora
 import (
 	"fmt"
 	"github.com/ahmetb/go-linq/v3"
-	"github.com/elliotcourant/buffers"
+	"math/rand"
 	"reflect"
+	"strings"
 )
 
 var (
@@ -19,6 +20,7 @@ type (
 		Name() string
 		Fields() FieldSet
 		PrimaryKey() FieldSet
+		UniqueConstraints() UniqueConstraintSet
 	}
 
 	Field interface {
@@ -33,6 +35,18 @@ type (
 		GetById(fieldId uint32) Field
 		GetByName(fieldName string) Field
 	}
+
+	UniqueConstraint interface {
+		UniqueConstraintId() uint32
+		Name() string
+		Fields() FieldSet
+	}
+
+	UniqueConstraintSet interface {
+		GetAll() []UniqueConstraint
+		GetById(uniqueConstraintId uint32) UniqueConstraint
+		GetByName(uniqueConstraintName string) UniqueConstraint
+	}
 )
 
 type modelInfo struct {
@@ -40,6 +54,10 @@ type modelInfo struct {
 	name       string
 	fields     FieldSet
 	primaryKey FieldSet
+}
+
+func (m *modelInfo) UniqueConstraints() UniqueConstraintSet {
+	panic("implement me")
 }
 
 func (m *modelInfo) ModelId() uint32 {
@@ -55,7 +73,7 @@ func (m *modelInfo) Fields() FieldSet {
 }
 
 func (m *modelInfo) PrimaryKey() FieldSet {
-	return nil
+	return m.primaryKey
 }
 
 type modelField struct {
@@ -75,13 +93,6 @@ func (m *modelField) Reflection() reflect.StructField {
 	return m.reflection
 }
 
-func (m *modelField) GetKey(record reflect.Value) []byte {
-	buf := buffers.NewBytesBuffer()
-	buf.AppendByte(datumKeyPrefix)
-	buf.AppendUint32(m.model.ModelId())
-
-}
-
 func (m *modelField) FieldId() uint32 {
 	return m.fieldId
 }
@@ -91,8 +102,7 @@ func (m *modelField) Name() string {
 }
 
 type fieldSet struct {
-	model *modelInfo
-
+	model  Model
 	fields []Field
 }
 
@@ -130,6 +140,71 @@ func getBaseTypeOf(model interface{}) reflect.Type {
 	}
 }
 
-// func getModelInfo(model interface{}) modelInfo {
-// 	typ := getBaseTypeOf(model)
-// }
+func getModelInfo(model interface{}) Model {
+	typ := getBaseTypeOf(model)
+
+	mInfo := &modelInfo{
+		modelId: rand.Uint32(),
+		name:    typ.Name(),
+	}
+
+	fields := &fieldSet{
+		model:  mInfo,
+		fields: make([]Field, 0),
+	}
+
+	primaryKey := &fieldSet{
+		model:  mInfo,
+		fields: make([]Field, 0),
+	}
+
+	numFields := typ.NumField()
+	for i := 0; i < numFields; i++ {
+		reflection := typ.Field(i)
+
+		field := &modelField{
+			model:        mInfo,
+			fieldId:      rand.Uint32(),
+			name:         reflection.Name,
+			isPrimaryKey: false,
+			reflection:   reflection,
+		}
+
+		flags := getFlags(reflection.Tag.Get("m"))
+
+		for key, value := range flags {
+			switch key {
+			case "pk":
+				field.isPrimaryKey = true
+			case "unique":
+				fmt.Println(value)
+			}
+		}
+
+		if field.isPrimaryKey {
+			primaryKey.fields = append(primaryKey.fields, field)
+		}
+
+		fields.fields = append(fields.fields, field)
+	}
+
+	mInfo.fields = fields
+	mInfo.primaryKey = primaryKey
+
+	return mInfo
+}
+
+func getFlags(tag string) map[string]string {
+	flags := strings.Split(tag, ",")
+	items := map[string]string{}
+	for _, flag := range flags {
+		split := strings.SplitN(flag, ":", 2)
+		switch len(split) {
+		case 1:
+			items[split[0]] = ""
+		case 2:
+			items[split[0]] = split[1]
+		}
+	}
+	return items
+}

@@ -13,20 +13,20 @@ type (
 	datumBuilder interface {
 		Model() Model
 		Value() interface{}
-		Reflection() *reflect.Value
+		Reflection() reflect.Value
 		Keys() map[string][]byte
 		Verify() map[string]bool
 	}
 
 	datumBuilderBase struct {
 		model  Model
-		value  *reflect.Value
+		value  reflect.Value
 		datums map[string][]byte
 		verify map[string]bool
 	}
 )
 
-func newDatumBuilder(model Model, value *reflect.Value) datumBuilder {
+func newDatumBuilder(model Model, value reflect.Value) datumBuilder {
 	return &datumBuilderBase{
 		model:  model,
 		value:  value,
@@ -43,7 +43,7 @@ func (d *datumBuilderBase) Value() interface{} {
 	return d.value.Interface()
 }
 
-func (d *datumBuilderBase) Reflection() *reflect.Value {
+func (d *datumBuilderBase) Reflection() reflect.Value {
 	return d.value
 }
 
