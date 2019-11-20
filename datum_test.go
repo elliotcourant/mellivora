@@ -31,5 +31,8 @@ func TestDatumBuilderBase_Keys(t *testing.T) {
 		builder := newDatumBuilder(info, reflect.ValueOf(dataNode))
 		datums := builder.Keys()
 		assert.NotEmpty(t, datums)
+
+		verify := builder.Verify()
+		assert.NotEmpty(t, verify)
 	})
 }

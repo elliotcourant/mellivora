@@ -177,7 +177,7 @@ func getModelInfo(model interface{}) Model {
 			case "pk":
 				field.isPrimaryKey = true
 			case "unique":
-				fmt.Println(value)
+				fmt.Sprint(value)
 			}
 		}
 
