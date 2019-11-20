@@ -15,23 +15,23 @@ type (
 		Value() interface{}
 		Reflection() *reflect.Value
 		Keys() map[string][]byte
-		Verify() map[string][]byte
+		Verify() map[string]bool
 	}
 
 	datumBuilderBase struct {
-		model        Model
-		value        *reflect.Value
-		datums       map[string][]byte
-		mustNotExist map[string]interface{}
+		model  Model
+		value  *reflect.Value
+		datums map[string][]byte
+		verify map[string]bool
 	}
 )
 
 func newDatumBuilder(model Model, value *reflect.Value) datumBuilder {
 	return &datumBuilderBase{
-		model:        model,
-		value:        value,
-		datums:       map[string][]byte{},
-		mustNotExist: map[string]interface{}{},
+		model:  model,
+		value:  value,
+		datums: map[string][]byte{},
+		verify: map[string]bool{},
 	}
 }
 
@@ -61,7 +61,7 @@ func (d *datumBuilderBase) Keys() map[string][]byte {
 	}
 	primaryKeyBuf.AppendRaw(primaryKeyValueBuf.Bytes())
 	d.datums[string(primaryKeyBuf.Bytes())] = make([]byte, 0)
-	d.mustNotExist[string(primaryKeyBuf.Bytes())] = nil
+	d.verify[string(primaryKeyBuf.Bytes())] = false // Make sure the primary key does not exist
 
 	for _, fieldInfo := range d.model.Fields().GetAll() {
 		if fieldInfo.IsPrimaryKey() {
@@ -81,6 +81,15 @@ func (d *datumBuilderBase) Keys() map[string][]byte {
 	return d.datums
 }
 
-func (d *datumBuilderBase) Verify() map[string][]byte {
-	panic("implement me")
+func (d *datumBuilderBase) Verify() map[string]bool {
+	// If we have already built our datum set then we know the verify set has been built.
+	if len(d.datums) > 0 {
+		return d.verify
+	}
+
+	// If the datum set has not been built then the verify set is definitely not built.
+	// Build the datum set and then return the verify map.
+	_ = d.Keys()
+
+	return d.verify
 }
