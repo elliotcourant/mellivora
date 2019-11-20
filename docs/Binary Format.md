@@ -8,8 +8,8 @@ For example, given the following struct:
 ```go
 type DataNode struct {
     DataNodeId uint64 `m:"pk,serial"`
-    Address    string `m:"unique:uq_address_port"`
-    Port       int32  `m:"unique:uq_address_port"`
+    Address    string `m:"uq:uq_address_port"`
+    Port       int32  `m:"uq:uq_address_port"`
     User       string
     Password   string
     Healthy    bool
@@ -58,3 +58,65 @@ The other key that will be checked is the unique constraint key.
 This does the same thing as checking the primary key, it will make sure that it doesn't already
 exist, but it also makes sure that a conflict error will be returned if that value changes before
 we can commit.
+
+# Relations
+
+Mellivora also supports relations. While only a single record type can be returned from a query, you
+can still use relations and joins to filter the results of that record type allowing for some
+natural distribution of data. Maybe at some point custom results could be returned.
+
+Relations can be implemented in the following way:
+
+```go
+type Product struct {
+    ProductId uint64 `m:"pk"`
+    Title     string
+}
+
+type Variant struct {
+    VariantId      uint64  `m:"pk"`
+    ProductId      uint64
+    ForeignProduct Product `m:"fk:ProductId"` // Provide the Id field(s) to be used.
+    SKU            string  `m:"uq"`
+}
+```
+
+Given a record for each of these, this serializes to something like this:
+
+```
+/datum/Product/{ProductId}
+/datum/Product/{ProductId}/Title = [Length Prefix]{Title Value}
+
+/datum/Variant/{VariantId}
+/datum/Variant/{VariantId}/ProductId = {ProductId}
+/datum/Variant/{VariantId}/SKU       = [Length Prefix]{SKU Value}
+
+/unique/Variant/uq_variant_sku/[SKU Length]{SKU Value} = {VariantId}
+
+/constraint/Product/{ProductId}/Variant/{VariantId}
+```
+
+This essentially introduces the constraint record. The constraint record is an additional key value
+pair in the database that is used to make sure that dependant records will still exist if their
+parent record is changed.
+
+For example; if we were to try to delete the product record here, we would do a prefix scan on
+constraints for products with that Id. If we find any records we can then start to handle the delete
+behavior for that entity. If the delete behavior is restrict then we can immediately fail and return 
+a restrict error. If the delete behavior is cascade then we now have a list of child records that
+we need to also delete, and for each child record we delete we will also need to check if they have
+any constraints. If the delete behavior is set null, then we can iterate over each of the items
+and update their values for that relational field to be null.
+At the moment Mellivora will only support the delete actions: _cascade_, _restrict_ and _set null_.
+
+## Inserting with Relations
+
+When a new record is inserted, like a Variant in the example above, we need to check for the
+existence of the parent product record. We do this by verifying that the following key must in fact
+exist.
+
+```
+/datum/Product/{ProductId}
+```
+
+If the value does not exist in the database then a foreign key violation error is returned.
