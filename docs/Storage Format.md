@@ -1,7 +1,8 @@
-# Binary Format
+# Storage Format
 
-Mellivora encodes structs to it's own binary format. This allows for some partial decoding when
-performing reads for performance.
+Mellivora encodes structs to it's own storage format. This allows for some partial decoding when
+performing reads for performance. This format is inspired directly by CockroachDB's underlying key
+value implementation.
 
 For example, given the following struct:
 
@@ -120,3 +121,77 @@ exist.
 ```
 
 If the value does not exist in the database then a foreign key violation error is returned.
+
+## Reading with Relations
+
+The big reason to use relations though is to read or filter data with them easily. We know a product
+has variants, and we know a variant belongs to a product. Using the constraint record or primary
+keys we can query these two records in either direction.
+
+Lets say we wanted to get all the products that have a variant that has a SKU of `ABC123`. 
+In SQL we would write this as:
+
+```sql
+SELECT 
+    products.* 
+FROM products 
+INNER JOIN variants ON variants.product_id = products.product_id
+WHERE
+    variants.sku = 'ABC123';
+```
+
+With Mellivora this would written as:
+
+```go
+var products []Product{}
+txn.Model(products).
+    InnerJoin(Variant{}).
+    Where(Ex{
+        "Variant.SKU": "ABC123"
+    }).
+    Select(products)
+```
+
+Whats happening on the backend is we are basically doing a key-only full table scan on products with
+the prefix:
+
+```
+/datum/Product/...
+```
+
+Each primary key record we hit we store to lookup the constraint record. We do not read any of the
+column datums at this time. This results in an array of ProductIds that we can use.
+
+We then have our iterator Seek to this prefix:
+
+```
+/constraint/Product/{ProductId}/Variant/...
+```
+
+This will essentially let us iterate over a list of every variant that references the current
+product. For each variant we find we evaluate the expression if we can. In the example query we can
+immediately evaluate the expression and can perform a direct GET on:
+
+```
+/datum/Variant/{VariantId}/SKU
+```
+
+If the key does not exist we continue on, if the key does exist then we do our comparison on the
+value of the key. If the value matches our expression then we throw our current ProductId in a
+bucket to be retrieved at the end of the operation.
+
+On a side note: If we are limiting our results, the limit is evaluated here. So if we reach the
+limit of records that we want to return it would stop evaluating the filter here and move on to
+retrieving the actual data for the valid productIds. We also evaluate the offset here as well, if
+the offset is greater than 0 then we only start throwing productIds into the bucket once we have
+successfully found more productIds than the offset amount.
+
+Once we have our final bucket of productIds we can now start to gather all of the data for their
+records. This is a less efficient process because of the columnar nature of Mellivora while still
+retrieving every column for a given record. However we know all of the fields for a given model; in
+this case a Product, and we know all of the primary keys we want to read. So we can build the keys
+desired from the store before we even start reading them. Once we have our array of keys we can
+sort the keys and then use our iterator to seek to each key. This is probably the most efficient as
+a GET operation uses iterators on the backend but must seek through the entire set to find a given
+value (this is a bad explanation of how it really works), but with our iterator we can seek
+sequentially for all of the keys we need and store their values and build our result.
