@@ -41,10 +41,25 @@ func TestTransaction_Insert(t *testing.T) {
 			},
 		}
 
-		err = txn.Insert(dataNodes)
-		assert.NoError(t, err)
+		// Insert the records initially, this insert should
+		// succeed as there are no records in the DB yet.
+		{
+			err = txn.Insert(dataNodes)
+			assert.NoError(t, err)
 
-		err = txn.Commit()
-		assert.NoError(t, err)
+			err = txn.Commit()
+			assert.NoError(t, err)
+		}
+
+		// Insert the records again, this insert should
+		// fail due to the unique constraint so make sure
+		// an error is returned from the insert call.
+		{
+			txn, err = db.Begin()
+			assert.NoError(t, err)
+
+			err = txn.Insert(dataNodes)
+			assert.Error(t, err)
+		}
 	})
 }

@@ -31,9 +31,25 @@ func NewTestDatabase(t *testing.T) (*Database, func()) {
 	err = store.Start()
 	assert.NoError(t, err)
 
-	return &Database{store: store}, func() {
-		store.Stop()
-		listener.Close()
-		os.RemoveAll(tmpdir)
+	return &Database{
+			store:  store,
+			logger: logger,
+		}, func() {
+			store.Stop()
+			listener.Close()
+			os.RemoveAll(tmpdir)
+		}
+}
+
+func NewCluster(t *testing.T, numberOfPeers int) ([]*Database, func()) {
+	listeners := make([]net.Listener, numberOfPeers)
+	for i := 0; i < numberOfPeers; i++ {
+		listener, err := net.Listen("tcp", ":")
+		assert.NoError(t, err)
+		assert.NotNil(t, listener)
+
+		listeners[i] = listener
 	}
+
+	return nil, nil
 }

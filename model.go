@@ -3,6 +3,7 @@ package mellivora
 import (
 	"fmt"
 	"github.com/ahmetb/go-linq/v3"
+	"hash/fnv"
 	"math/rand"
 	"reflect"
 	"strings"
@@ -186,8 +187,12 @@ func getBaseTypeOf(model interface{}) reflect.Type {
 func getModelInfo(model interface{}) Model {
 	typ := getBaseTypeOf(model)
 
+	modelId := fnv.New32()
+	modelPath := fmt.Sprint(typ.PkgPath(), typ.Name())
+	_, _ = modelId.Write([]byte(modelPath))
+
 	mInfo := &modelInfo{
-		modelId: rand.Uint32(),
+		modelId: modelId.Sum32(),
 		name:    typ.Name(),
 	}
 
@@ -207,9 +212,13 @@ func getModelInfo(model interface{}) Model {
 	for i := 0; i < numFields; i++ {
 		reflection := typ.Field(i)
 
+		fieldId := fnv.New32()
+		_, _ = fieldId.Write([]byte(modelPath))
+		_, _ = fieldId.Write([]byte(reflection.Name))
+
 		field := &modelField{
 			model:        mInfo,
-			fieldId:      rand.Uint32(),
+			fieldId:      fieldId.Sum32(),
 			name:         reflection.Name,
 			isPrimaryKey: false,
 			reflection:   reflection,
@@ -255,8 +264,12 @@ func getModelInfo(model interface{}) Model {
 			uniqueName = fmt.Sprintf("uq_%s", strings.Join(names, "_"))
 		}
 
+		uniqueId := fnv.New32()
+		_, _ = uniqueId.Write([]byte(modelPath))
+		_, _ = uniqueId.Write([]byte(uniqueName))
+
 		uniqueConstraints.constraints = append(uniqueConstraints.constraints, &uniqueConstraint{
-			uniqueConstraintId: rand.Uint32(),
+			uniqueConstraintId: uniqueId.Sum32(),
 			name:               uniqueName,
 			fields: &fieldSet{
 				model:  mInfo,

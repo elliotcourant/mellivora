@@ -2,10 +2,12 @@ package mellivora
 
 import (
 	"github.com/elliotcourant/meles"
+	"github.com/elliotcourant/timber"
 )
 
 type Database struct {
-	store *meles.Store
+	store  *meles.Store
+	logger timber.Logger
 }
 
 func Open() *Database {
