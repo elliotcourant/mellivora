@@ -25,5 +25,6 @@ func (txn *Transaction) Rollback() error {
 }
 
 func (txn *Transaction) Insert(model interface{}) error {
+	// info := getModelInfo(model)
 	return nil
 }
