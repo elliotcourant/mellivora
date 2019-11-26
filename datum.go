@@ -52,30 +52,43 @@ func (d *datumBuilderBase) Keys() map[string][]byte {
 		return d.datums
 	}
 
-	primaryKeyValueBuf := buffers.NewBytesBuffer()
-	primaryKeyBuf := buffers.NewBytesBuffer()
-	primaryKeyBuf.AppendByte(datumKeyPrefix)
-	primaryKeyBuf.AppendUint32(d.model.ModelId())
-	for _, fieldInfo := range d.model.PrimaryKey().GetAll() {
-		primaryKeyValueBuf.AppendReflection(d.value.FieldByIndex(fieldInfo.Reflection().Index))
-	}
-	primaryKeyBuf.AppendRaw(primaryKeyValueBuf.Bytes())
-	d.datums[string(primaryKeyBuf.Bytes())] = make([]byte, 0)
-	d.verify[string(primaryKeyBuf.Bytes())] = false // Make sure the primary key does not exist
-
-	for _, fieldInfo := range d.model.Fields().GetAll() {
-		if fieldInfo.IsPrimaryKey() {
-			continue
+	// Handle initial datum record.
+	{
+		primaryKeyValueBuf := buffers.NewBytesBuffer()
+		for _, fieldInfo := range d.model.PrimaryKey().GetAll() {
+			primaryKeyValueBuf.AppendReflection(d.value.FieldByIndex(fieldInfo.Reflection().Index))
 		}
-		fieldBuf := buffers.NewBytesBuffer()
-		fieldBuf.AppendByte(datumKeyPrefix)
-		fieldBuf.AppendUint32(d.model.ModelId())
-		fieldBuf.AppendRaw(primaryKeyValueBuf.Bytes())
-		fieldBuf.AppendUint32(fieldInfo.FieldId())
 
-		valueBuf := buffers.NewBytesBuffer()
-		valueBuf.AppendReflection(d.value.FieldByIndex(fieldInfo.Reflection().Index))
-		d.datums[string(fieldBuf.Bytes())] = valueBuf.Bytes()
+		datumKeyBuf := buffers.NewBytesBuffer()
+		datumKeyBuf.AppendByte(datumKeyPrefix)
+		datumKeyBuf.AppendUint32(d.model.ModelId())
+		datumKeyBuf.AppendRaw(primaryKeyValueBuf.Bytes())
+
+		datumValueBuf := buffers.NewBytesBuffer()
+		for _, fieldInfo := range d.model.Fields().GetAll() {
+			if fieldInfo.IsPrimaryKey() {
+				continue
+			}
+			datumValueBuf.AppendReflection(d.value.FieldByIndex(fieldInfo.Reflection().Index))
+		}
+
+		d.datums[string(datumKeyBuf.Bytes())] = datumValueBuf.Bytes()
+	}
+
+	for _, uniqueConstraint := range d.model.UniqueConstraints().GetAll() {
+		uniqueConstraintBuf := buffers.NewBytesBuffer()
+		uniqueConstraintBuf.AppendByte(uniqueKeyPrefix)
+		uniqueConstraintBuf.AppendUint32(d.model.ModelId())
+		uniqueConstraintBuf.AppendUint32(uniqueConstraint.UniqueConstraintId())
+		for _, fieldInfo := range uniqueConstraint.Fields().GetAll() {
+			uniqueConstraintBuf.AppendReflection(d.value.FieldByIndex(fieldInfo.Reflection().Index))
+		}
+		uniqueConstraintKey := uniqueConstraintBuf.Bytes()
+
+		d.datums[string(uniqueConstraintKey)] = make([]byte, 0)
+
+		// Make sure that the unique key does not exist.
+		d.verify[string(uniqueConstraintKey)] = false
 	}
 
 	return d.datums
