@@ -1,0 +1,12 @@
+language: go
+
+go:
+  - "1.13"
+
+matrix:
+  include:
+    - os: linux
+      install:
+        - go get
+      script:
+        - go test -t -v ./...
