@@ -63,7 +63,49 @@ func TestTransaction_Insert(t *testing.T) {
 		}
 	})
 
-	t.Run("simple cluster", func(t *testing.T) {
+	t.Run("cluster", func(t *testing.T) {
+		cluster, cleanup := NewCluster(t, 3)
+		defer cleanup()
+
+		type DataNode struct {
+			DataNodeId uint64 `m:"pk,serial"`
+			Address    string `m:"unique:uq_address_port"`
+			Port       int32  `m:"unique:uq_address_port"`
+			User       string
+			Password   string
+			Healthy    bool
+		}
+
+		dataNodes := []*DataNode{
+			{
+				DataNodeId: 1234,
+				Address:    "127.0.0.1",
+				Port:       5432,
+				User:       "POSTGRES",
+				Password:   "password",
+				Healthy:    true,
+			},
+			{
+				DataNodeId: 1235,
+				Address:    "127.0.0.1",
+				Port:       5433,
+				User:       "POSTGRES",
+				Password:   "password",
+				Healthy:    true,
+			},
+		}
+
+		txn1, err := cluster[0].Begin()
+		assert.NoError(t, err)
+
+		err = txn1.Insert(dataNodes)
+		assert.NoError(t, err)
+
+		err = txn1.Commit()
+		assert.NoError(t, err)
+	})
+
+	t.Run("conflict", func(t *testing.T) {
 		cluster, cleanup := NewCluster(t, 3)
 		defer cleanup()
 
