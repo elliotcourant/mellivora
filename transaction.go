@@ -13,8 +13,8 @@ type Transaction struct {
 
 func (txn *Transaction) Model(model interface{}) *Query {
 	return &Query{
-		// model: model,
-		txn: txn,
+		model: getModelInfo(model),
+		txn:   txn,
 	}
 }
 

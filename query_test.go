@@ -28,6 +28,10 @@ func TestQuery_Where(t *testing.T) {
 				ItemId: 2,
 				Name:   "Item Two",
 			},
+			{
+				ItemId: 3,
+				Name:   "Item Three",
+			},
 		}
 
 		err = txn.Insert(items)
