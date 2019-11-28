@@ -28,7 +28,7 @@ func (txn *Transaction) Rollback() error {
 
 func (txn *Transaction) Insert(model interface{}) error {
 	info := getModelInfo(model)
-	builder := newDatumBuilder(info, reflect.ValueOf(model))
+	builder := newDatumBuilder(info, reflect.ValueOf(model), true)
 
 	datums, err := builder.Keys()
 	if err != nil {

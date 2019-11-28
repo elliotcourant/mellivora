@@ -28,7 +28,7 @@ func TestDatumBuilderBase_Keys(t *testing.T) {
 
 		info := getModelInfo(dataNode)
 
-		builder := newDatumBuilder(info, reflect.ValueOf(dataNode))
+		builder := newDatumBuilder(info, reflect.ValueOf(dataNode), true)
 		datums, err := builder.Keys()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, datums)
@@ -69,7 +69,7 @@ func TestDatumBuilderBase_Keys(t *testing.T) {
 
 		info := getModelInfo(dataNode)
 
-		builder := newDatumBuilder(info, reflect.ValueOf(dataNode))
+		builder := newDatumBuilder(info, reflect.ValueOf(dataNode), true)
 		datums, err := builder.Keys()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, datums)
@@ -110,8 +110,54 @@ func TestDatumBuilderBase_Keys(t *testing.T) {
 
 		info := getModelInfo(dataNode)
 
-		builder := newDatumBuilder(info, reflect.ValueOf(dataNode))
+		builder := newDatumBuilder(info, reflect.ValueOf(dataNode), true)
 		_, err := builder.Keys()
 		assert.Error(t, err, "expected error due to unique violation")
+	})
+}
+
+func TestDatumReaderBase_Read(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		type Item struct {
+			ItemId uint64 `m:"pk"`
+			Name   string
+		}
+
+		items := []Item{
+			{
+				ItemId: 1,
+				Name:   "Item One",
+			},
+			{
+				ItemId: 2,
+				Name:   "Item Two",
+			},
+			{
+				ItemId: 3,
+				Name:   "Item Three",
+			},
+			{
+				ItemId: 4,
+				Name:   "Item Four",
+			},
+		}
+
+		info := getModelInfo(items)
+
+		builder := newDatumBuilder(info, reflect.ValueOf(items), true)
+		datums, err := builder.Keys()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, datums)
+
+		verify, err := builder.Verify()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, verify)
+
+		reader := newDatumReader(info)
+		for k, v := range datums {
+			value, err := reader.Read([]byte(k), v)
+			assert.NoError(t, err)
+			assert.NotEmpty(t, value)
+		}
 	})
 }

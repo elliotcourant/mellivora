@@ -8,6 +8,7 @@ import (
 
 var (
 	_ datumBuilder = &datumBuilderBase{}
+	_ datumReader  = &datumReaderBase{}
 )
 
 type (
@@ -20,19 +21,86 @@ type (
 	}
 
 	datumBuilderBase struct {
-		model  Model
-		value  reflect.Value
-		datums map[string][]byte
-		verify map[string]bool
+		model    Model
+		value    reflect.Value
+		isInsert bool
+		datums   map[string][]byte
+		verify   map[string]bool
+	}
+
+	datumReader interface {
+		Model() Model
+		Read(key, value []byte) (reflect.Value, error)
+	}
+
+	datumReaderBase struct {
+		model Model
 	}
 )
 
-func newDatumBuilder(model Model, value reflect.Value) datumBuilder {
+func newDatumReader(model Model) datumReader {
+	return &datumReaderBase{
+		model: model,
+	}
+}
+
+func (d *datumReaderBase) Model() Model {
+	return d.model
+}
+
+func (d *datumReaderBase) Read(key, value []byte) (reflect.Value, error) {
+	reflection := reflect.New(d.Model().Type()).Elem()
+
+	keyReader := buffers.NewBytesReader(key)
+
+	// Read type prefix
+	if kvType := keyReader.NextByte(); kvType != datumKeyPrefix {
+		// TODO (elliotcourant) parse the type prefix and try to stringify it.
+		return reflection, fmt.Errorf("key value pair is not a datum")
+	}
+
+	// Make sure the modelId matches what we are trying to read.
+	if modelId := keyReader.NextUint32(); modelId != d.Model().ModelId() {
+		// TODO (elliotcourant) try to find out what type this datum is
+		//  for the sake of returning a helpful error.
+		return reflection, fmt.Errorf(
+			"datum is not [%s], expected modelId: %d found: %d",
+			d.Model().Name(), d.Model().ModelId(), modelId)
+	}
+
+	primaryKeyFields := d.Model().PrimaryKey().GetAll()
+	for _, field := range primaryKeyFields {
+		kind := field.Reflection().Type.Kind()
+		reflection.
+			FieldByIndex(field.Reflection().Index).
+			Set(reflect.ValueOf(keyReader.NextReflection(kind)))
+	}
+
+	valueReader := buffers.NewBytesReader(value)
+
+	datumFields := d.Model().Fields().GetAll()
+	for _, field := range datumFields {
+		// Skip primary key fields since we already read those from the key.
+		if field.IsPrimaryKey() {
+			continue
+		}
+
+		kind := field.Reflection().Type.Kind()
+		reflection.
+			FieldByIndex(field.Reflection().Index).
+			Set(reflect.ValueOf(valueReader.NextReflection(kind)))
+	}
+
+	return reflection, nil
+}
+
+func newDatumBuilder(model Model, value reflect.Value, isInsert bool) datumBuilder {
 	return &datumBuilderBase{
-		model:  model,
-		value:  value,
-		datums: map[string][]byte{},
-		verify: map[string]bool{},
+		model:    model,
+		value:    value,
+		isInsert: isInsert,
+		datums:   map[string][]byte{},
+		verify:   map[string]bool{},
 	}
 }
 
@@ -117,8 +185,18 @@ func (d *datumBuilderBase) encodeSingleDatum(value reflect.Value) error {
 			datumValueBuf.AppendReflection(value.FieldByIndex(fieldInfo.Reflection().Index))
 		}
 
-		if err := d.setDatum(datumKeyBuf.Bytes(), datumValueBuf.Bytes()); err != nil {
+		datumKey := datumKeyBuf.Bytes()
+
+		if err := d.setDatum(datumKey, datumValueBuf.Bytes()); err != nil {
 			return err
+		}
+
+		// If we are inserting we need to make sure that there isn't another item with the same
+		// primary key.
+		if d.isInsert {
+			if err := d.setVerify(datumKey, false); err != nil {
+				return err
+			}
 		}
 	}
 

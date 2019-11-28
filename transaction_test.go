@@ -105,7 +105,7 @@ func TestTransaction_Insert(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("conflict", func(t *testing.T) {
+	t.Run("distributed conflict", func(t *testing.T) {
 		cluster, cleanup := NewCluster(t, 3)
 		defer cleanup()
 

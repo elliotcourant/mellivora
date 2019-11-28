@@ -21,6 +21,7 @@ type (
 	Model interface {
 		ModelId() uint32
 		Name() string
+		Type() reflect.Type
 		Fields() FieldSet
 		PrimaryKey() FieldSet
 		UniqueConstraints() UniqueConstraintSet
@@ -95,9 +96,14 @@ func (u *uniqueConstraintSet) GetByName(uniqueConstraintName string) UniqueConst
 type modelInfo struct {
 	modelId           uint32
 	name              string
+	typ               reflect.Type
 	fields            FieldSet
 	primaryKey        FieldSet
 	uniqueConstraints UniqueConstraintSet
+}
+
+func (m *modelInfo) Type() reflect.Type {
+	return m.typ
 }
 
 func (m *modelInfo) UniqueConstraints() UniqueConstraintSet {
@@ -194,6 +200,7 @@ func getModelInfo(model interface{}) Model {
 	mInfo := &modelInfo{
 		modelId: modelId.Sum32(),
 		name:    typ.Name(),
+		typ:     typ,
 	}
 
 	fields := &fieldSet{
