@@ -34,6 +34,7 @@ func (q *Query) Limit(limit int) *Query {
 func (q *Query) Select(destination interface{}) error {
 	start := time.Now()
 	defer q.txn.db.logger.Tracef("select %T took %s", destination, time.Since(start))
+
 	dest := reflect.ValueOf(destination)
 	for dest.Kind() == reflect.Ptr {
 		dest = dest.Elem()
@@ -79,7 +80,7 @@ func (q *Query) Select(destination interface{}) error {
 		}
 	}
 
-	return q.scanResults(items, destination)
+	return q.scanResults(items)
 }
 
 func (q *Query) meetsCriteria(item reflect.Value, criteria [][]criteriaExpression) bool {
@@ -102,19 +103,15 @@ func (q *Query) meetsCriteria(item reflect.Value, criteria [][]criteriaExpressio
 	return meetsCriteria
 }
 
-func (q *Query) scanResults(items []reflect.Value, destination interface{}) error {
-	dest := reflect.ValueOf(destination)
-	for dest.Kind() == reflect.Ptr {
-		dest = dest.Elem()
-	}
-	switch dest.Kind() {
+func (q *Query) scanResults(items []reflect.Value) error {
+	switch q.destination.Kind() {
 	case reflect.Struct:
-		dest.Set(items[0])
+		q.destination.Set(items[0])
 	case reflect.Array, reflect.Slice:
-		dest.Set(reflect.MakeSlice(dest.Type(), 0, dest.Cap()))
-		dest.Set(reflect.Append(dest, items...))
+		q.destination.Set(reflect.MakeSlice(q.destination.Type(), 0, q.destination.Cap()))
+		q.destination.Set(reflect.Append(q.destination, items...))
 	default:
-		return fmt.Errorf("cannot scan results to %T", destination)
+		return fmt.Errorf("cannot scan results to %T", q.destination)
 	}
 
 	return nil
