@@ -7,8 +7,9 @@ import (
 )
 
 type Transaction struct {
-	db *Database
-	tx *meles.Transaction
+	db  *Database
+	tx  *meles.Transaction
+	itr *meles.Iterator
 }
 
 func (txn *Transaction) Model(model interface{}) *Query {
@@ -57,4 +58,12 @@ func (txn *Transaction) Insert(model interface{}) error {
 	}
 
 	return nil
+}
+
+func (txn *Transaction) iterator() *meles.Iterator {
+	if txn.itr == nil {
+		txn.itr = txn.tx.GetIterator(make([]byte, 0), false, false)
+	}
+
+	return txn.itr
 }

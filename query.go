@@ -60,7 +60,7 @@ func (q *Query) Select(destination interface{}) error {
 		criteriaGroups = append(criteriaGroups, criteriaGroup)
 	}
 
-	itr := q.txn.tx.GetIterator(make([]byte, 0), false, false)
+	itr := q.txn.iterator()
 	items := make([]reflect.Value, 0)
 	reader := newDatumReader(q.model)
 	for itr.Seek([]byte{datumKeyPrefix}); itr.ValidForPrefix([]byte{datumKeyPrefix}); itr.Next() {

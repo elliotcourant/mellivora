@@ -29,13 +29,13 @@ func TestQuery_Where(t *testing.T) {
 	db, cleanup := NewTestDatabase(t)
 	defer cleanup()
 
+	txn, err := db.Begin()
+	assert.NoError(t, err)
+
+	err = txn.Insert(items)
+	assert.NoError(t, err)
+
 	t.Run("filter by name", func(t *testing.T) {
-		txn, err := db.Begin()
-		assert.NoError(t, err)
-
-		err = txn.Insert(items)
-		assert.NoError(t, err)
-
 		result := make([]Item, 0)
 		err = txn.Model(result).Where(Ex{
 			"Name": "Item Two",
@@ -51,12 +51,6 @@ func TestQuery_Where(t *testing.T) {
 	})
 
 	t.Run("filter by id", func(t *testing.T) {
-		txn, err := db.Begin()
-		assert.NoError(t, err)
-
-		err = txn.Insert(items)
-		assert.NoError(t, err)
-
 		result := make([]Item, 0)
 		err = txn.Model(result).Where(Ex{
 			"ItemId": 3,
