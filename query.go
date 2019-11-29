@@ -21,6 +21,14 @@ type Query struct {
 	offset int
 }
 
+func (q *Query) InnerJoin(relatedModel interface{}) *Query {
+	return nil
+}
+
+func (q *Query) LeftJoin(relatedModel interface{}) *Query {
+	return nil
+}
+
 func (q *Query) Where(expression ...Ex) *Query {
 	q.filters = append(q.filters, expression...)
 	return q

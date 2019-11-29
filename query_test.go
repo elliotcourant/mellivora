@@ -77,3 +77,91 @@ func TestQuery_Where(t *testing.T) {
 		}, result)
 	})
 }
+
+func TestQuery_InnerJoin(t *testing.T) {
+	t.Skip("still working on")
+	type ParentItem struct {
+		ParentId  uint64 `m:"pk"`
+		Name      string
+		IsEnabled bool
+	}
+
+	type ChildItem struct {
+		ChildId  uint64 `m:"pk"`
+		ParentId uint64
+		Parent   ParentItem `m:"fk:ParentId"`
+		Name     string
+	}
+
+	parents := []ParentItem{
+		{
+			ParentId:  1,
+			Name:      "Parent One",
+			IsEnabled: true,
+		},
+		{
+			ParentId:  2,
+			Name:      "Parent Two",
+			IsEnabled: false,
+		},
+	}
+
+	children := []ChildItem{
+		{
+			ChildId:  1,
+			ParentId: 1,
+			Name:     "Child One",
+		},
+		{
+			ChildId:  2,
+			ParentId: 1,
+			Name:     "Child Two",
+		},
+		{
+			ChildId:  3,
+			ParentId: 2,
+			Name:     "Child Three",
+		},
+		{
+			ChildId:  4,
+			ParentId: 2,
+			Name:     "Child Four",
+		},
+	}
+
+	db, cleanup := NewTestDatabase(t)
+	defer cleanup()
+
+	txn, err := db.Begin()
+	assert.NoError(t, err)
+
+	err = txn.Insert(parents)
+	assert.NoError(t, err)
+
+	err = txn.Insert(children)
+	assert.NoError(t, err)
+
+	t.Run("simple", func(t *testing.T) {
+		result := make([]ChildItem, 0)
+		err = txn.
+			Model(&result).
+			InnerJoin(ParentItem{}).
+			Where(Ex{
+				"Parent.IsEnabled": true,
+			}).
+			Select(&result)
+		assert.NoError(t, err)
+		assert.Equal(t, []ChildItem{
+			{
+				ChildId:  1,
+				ParentId: 1,
+				Name:     "Child One",
+			},
+			{
+				ChildId:  2,
+				ParentId: 1,
+				Name:     "Child Two",
+			},
+		}, result)
+	})
+}
