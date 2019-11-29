@@ -1,8 +1,10 @@
 package mellivora
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
+	"time"
 )
 
 type criteriaExpression = func(datum reflect.Value) bool
@@ -30,6 +32,8 @@ func (q *Query) Limit(limit int) *Query {
 }
 
 func (q *Query) Select(destination interface{}) error {
+	start := time.Now()
+	defer q.txn.db.logger.Tracef("select %T took %s", destination, time.Since(start))
 	dest := reflect.ValueOf(destination)
 	for dest.Kind() == reflect.Ptr {
 		dest = dest.Elem()
@@ -46,7 +50,8 @@ func (q *Query) Select(destination interface{}) error {
 				criteriaGroup = append(criteriaGroup, func(datum reflect.Value) bool {
 					field := q.model.Fields().GetByName(fieldName)
 
-					return reflect.DeepEqual(value, datum.FieldByIndex(field.Reflection().Index).Interface())
+					// TODO (elliotcourant) build a better comparision system.
+					return fmt.Sprint(value) == fmt.Sprint(datum.FieldByIndex(field.Reflection().Index).Interface())
 				})
 			default:
 				panic("indirect fields not implemented")
@@ -74,7 +79,7 @@ func (q *Query) Select(destination interface{}) error {
 		}
 	}
 
-	return nil
+	return q.scanResults(items, destination)
 }
 
 func (q *Query) meetsCriteria(item reflect.Value, criteria [][]criteriaExpression) bool {
@@ -95,4 +100,22 @@ func (q *Query) meetsCriteria(item reflect.Value, criteria [][]criteriaExpressio
 	}
 
 	return meetsCriteria
+}
+
+func (q *Query) scanResults(items []reflect.Value, destination interface{}) error {
+	dest := reflect.ValueOf(destination)
+	for dest.Kind() == reflect.Ptr {
+		dest = dest.Elem()
+	}
+	switch dest.Kind() {
+	case reflect.Struct:
+		dest.Set(items[0])
+	case reflect.Array, reflect.Slice:
+		dest.Set(reflect.MakeSlice(dest.Type(), 0, dest.Cap()))
+		dest.Set(reflect.Append(dest, items...))
+	default:
+		return fmt.Errorf("cannot scan results to %T", destination)
+	}
+
+	return nil
 }
