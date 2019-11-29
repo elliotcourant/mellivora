@@ -56,11 +56,9 @@ func (q *Query) Select(destination interface{}) error {
 	}
 
 	itr := q.txn.tx.GetIterator(make([]byte, 0), false, false)
-	itr.Seek([]byte{datumKeyPrefix})
 	items := make([]reflect.Value, 0)
-
 	reader := newDatumReader(q.model)
-	for ; itr.ValidForPrefix([]byte{datumKeyPrefix}); itr.Next() {
+	for itr.Seek([]byte{datumKeyPrefix}); itr.ValidForPrefix([]byte{datumKeyPrefix}); itr.Next() {
 		item := itr.Item()
 		key, value, err := make([]byte, 0), make([]byte, 0), error(nil)
 		key = item.KeyCopy(key)
@@ -71,28 +69,30 @@ func (q *Query) Select(destination interface{}) error {
 
 		if result, err := reader.Read(key, value); err != nil {
 			return err
-		} else {
-			meetsCriteria := false
-			for _, criteriaGroup := range criteriaGroups {
-				meetsCriteriaGroup := true
-				for _, criteria := range criteriaGroup {
-					if !criteria(result) {
-						meetsCriteriaGroup = false
-						break
-					}
-				}
-
-				if meetsCriteriaGroup {
-					meetsCriteria = true
-					break
-				}
-			}
-
-			if meetsCriteria {
-				items = append(items, result)
-			}
+		} else if q.meetsCriteria(result, criteriaGroups) {
+			items = append(items, result)
 		}
 	}
 
 	return nil
+}
+
+func (q *Query) meetsCriteria(item reflect.Value, criteria [][]criteriaExpression) bool {
+	meetsCriteria := false
+	for _, criteriaGroup := range criteria {
+		meetsCriteriaGroup := true
+		for _, criteria := range criteriaGroup {
+			if !criteria(item) {
+				meetsCriteriaGroup = false
+				break
+			}
+		}
+
+		if meetsCriteriaGroup {
+			meetsCriteria = true
+			break
+		}
+	}
+
+	return meetsCriteria
 }
