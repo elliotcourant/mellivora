@@ -64,4 +64,16 @@ func TestQuery_Where(t *testing.T) {
 			},
 		}, result)
 	})
+
+	t.Run("filter by id into struct", func(t *testing.T) {
+		result := Item{}
+		err = txn.Model(result).Where(Ex{
+			"ItemId": 3,
+		}).Select(&result)
+		assert.NoError(t, err)
+		assert.Equal(t, Item{
+			ItemId: 3,
+			Name:   "Item Three",
+		}, result)
+	})
 }
