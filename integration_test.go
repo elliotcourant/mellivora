@@ -38,6 +38,7 @@ func TestNoahDbIntegration(t *testing.T) {
 		ReadOnly        bool
 	}
 
+	// Seed the database
 	{
 		dataNodes := []DataNode{
 			{
@@ -184,15 +185,22 @@ func TestNoahDbIntegration(t *testing.T) {
 	t.Run("get data nodes for shard", func(t *testing.T) {
 		dataNodeShards := make([]DataNodeShards, 0)
 		err = txn.Model(dataNodeShards).Where(Ex{
-			"ShardId": 2,
+			"ShardId":  2,
+			"ReadOnly": true,
 		}).Select(&dataNodeShards)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, dataNodeShards)
 
-		//
-		// dataNodes := make([]DataNode, 0)
-		// err = txn.Model(dataNodes).Where(Ex{
-		// 	"DataNodeId":
-		// })
+		dataNodeIds := make([]uint64, 0)
+		for _, dataNodeShard := range dataNodeShards {
+			dataNodeIds = append(dataNodeIds, dataNodeShard.DataNodeId)
+		}
+
+		dataNodes := make([]DataNode, 0)
+		err = txn.Model(dataNodes).Where(Ex{
+			"DataNodeId": dataNodeIds,
+		}).Select(&dataNodes)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, dataNodes)
 	})
 }

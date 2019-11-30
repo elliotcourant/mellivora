@@ -49,37 +49,7 @@ func (q *Query) Select(destination interface{}) error {
 	}
 	q.destination = dest
 
-	criteriaGroups := make([][]criteriaExpression, 0)
-	for _, filter := range q.filters {
-		criteriaGroup := make([]criteriaExpression, 0)
-		for fieldName, value := range filter {
-			fieldParts := strings.Split(fieldName, ".")
-			switch len(fieldParts) {
-			case 1:
-				switch reflect.TypeOf(value).Kind() {
-				case reflect.Slice, reflect.Array:
-					// TODO (elliotcourant) build "in" query support.
-					criteriaGroup = append(criteriaGroup, func(datum reflect.Value) bool {
-						field := q.model.Fields().GetByName(fieldName)
-
-						// TODO (elliotcourant) build a better comparision system.
-						return fmt.Sprint(value) == fmt.Sprint(datum.FieldByIndex(field.Reflection().Index).Interface())
-					})
-				default:
-					criteriaGroup = append(criteriaGroup, func(datum reflect.Value) bool {
-						field := q.model.Fields().GetByName(fieldName)
-
-						// TODO (elliotcourant) build a better comparision system.
-						return fmt.Sprint(value) == fmt.Sprint(datum.FieldByIndex(field.Reflection().Index).Interface())
-					})
-				}
-
-			default:
-				panic("indirect fields not implemented")
-			}
-		}
-		criteriaGroups = append(criteriaGroups, criteriaGroup)
-	}
+	criteriaGroups := q.buildCriteria()
 
 	itr := q.txn.iterator(true)
 	items := make([]reflect.Value, 0)
@@ -102,6 +72,52 @@ func (q *Query) Select(destination interface{}) error {
 	}
 
 	return q.scanResults(items)
+}
+
+func (q *Query) buildCriteria() [][]criteriaExpression {
+	criteriaGroups := make([][]criteriaExpression, 0)
+	for _, filter := range q.filters {
+		criteriaGroup := make([]criteriaExpression, 0)
+		for fieldName, value := range filter {
+			fieldParts := strings.Split(fieldName, ".")
+			switch len(fieldParts) {
+			case 1:
+				switch reflect.TypeOf(value).Kind() {
+				case reflect.Slice, reflect.Array:
+					inMap := map[string]interface{}{}
+
+					valueReflection := reflect.ValueOf(value)
+					size := valueReflection.Len()
+					for i := 0; i < size; i++ {
+						inMap[fmt.Sprint(valueReflection.Index(i).Interface())] = nil
+					}
+
+					criteriaGroup = append(criteriaGroup, func(datum reflect.Value) bool {
+						field := q.model.Fields().GetByName(fieldParts[0])
+
+						datumValue := fmt.Sprint(datum.FieldByIndex(field.Reflection().Index).Interface())
+						_, ok := inMap[datumValue]
+						return ok
+					})
+				default:
+					filterValue := fmt.Sprint(value)
+					criteriaGroup = append(criteriaGroup, func(datum reflect.Value) bool {
+						field := q.model.Fields().GetByName(fieldParts[0])
+
+						// TODO (elliotcourant) build a better comparision system.
+						datumValue := fmt.Sprint(datum.FieldByIndex(field.Reflection().Index).Interface())
+						return filterValue == datumValue
+					})
+				}
+
+			default:
+				panic("indirect fields not implemented")
+			}
+		}
+		criteriaGroups = append(criteriaGroups, criteriaGroup)
+	}
+
+	return criteriaGroups
 }
 
 func (q *Query) meetsCriteria(item reflect.Value, criteria [][]criteriaExpression) bool {
