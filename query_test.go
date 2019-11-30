@@ -202,3 +202,51 @@ func TestQuery_ScanCustomType(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, read)
 }
+
+func TestQuery_AndWhere(t *testing.T) {
+	type Item struct {
+		ItemId uint64 `m:"pk"`
+		Name   string
+	}
+
+	items := []Item{
+		{
+			ItemId: 1,
+			Name:   "Item One",
+		},
+		{
+			ItemId: 2,
+			Name:   "Item Two",
+		},
+		{
+			ItemId: 3,
+			Name:   "Item Three",
+		},
+	}
+
+	db, cleanup := NewTestDatabase(t)
+	defer cleanup()
+
+	txn, err := db.Begin()
+	assert.NoError(t, err)
+
+	err = txn.Insert(items)
+	assert.NoError(t, err)
+
+	t.Run("filter by name", func(t *testing.T) {
+		result := make([]Item, 0)
+		err = txn.Model(result).Where(Ex{
+			"Name": "Item Two",
+		}).AndWhere(Ex{
+			"ItemId": 2,
+		}).Select(&result)
+		assert.NoError(t, err)
+		assert.Len(t, result, 1)
+		assert.Equal(t, []Item{
+			{
+				ItemId: 2,
+				Name:   "Item Two",
+			},
+		}, result)
+	})
+}

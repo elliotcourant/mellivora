@@ -34,6 +34,20 @@ func (q *Query) Where(expression ...Ex) *Query {
 	return q
 }
 
+func (q *Query) AndWhere(expression ...Ex) *Query {
+	if len(q.filters) == 0 {
+		return q.Where(expression...)
+	} else {
+		for _, filter := range expression {
+			for k, v := range filter {
+				q.filters[len(q.filters)-1][k] = v
+			}
+		}
+	}
+
+	return q
+}
+
 func (q *Query) Limit(limit int) *Query {
 	q.limit = limit
 	return q
