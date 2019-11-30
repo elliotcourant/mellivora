@@ -165,3 +165,40 @@ func TestQuery_InnerJoin(t *testing.T) {
 		}, result)
 	})
 }
+
+func TestQuery_ScanCustomType(t *testing.T) {
+	type Thing int
+	type Item struct {
+		ItemId uint64 `m:"pk"`
+		Stuff  Thing
+	}
+
+	items := []Item{
+		{
+			ItemId: 1,
+			Stuff:  5321,
+		},
+		{
+			ItemId: 2,
+			Stuff:  4213,
+		},
+		{
+			ItemId: 3,
+			Stuff:  6435,
+		},
+	}
+
+	db, cleanup := NewTestDatabase(t)
+	defer cleanup()
+
+	txn, err := db.Begin()
+	assert.NoError(t, err)
+
+	err = txn.Insert(items)
+	assert.NoError(t, err)
+
+	read := make([]Item, 0)
+	err = txn.Model(read).Select(&read)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, read)
+}

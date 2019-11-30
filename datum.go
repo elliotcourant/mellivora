@@ -87,9 +87,14 @@ func (d *datumReaderBase) Read(key, value []byte) (reflect.Value, error) {
 		}
 
 		kind := field.Reflection().Type.Kind()
-		reflection.
-			FieldByIndex(field.Reflection().Index).
-			Set(reflect.ValueOf(valueReader.NextReflection(kind)))
+		fieldReflection := reflection.
+			FieldByIndex(field.Reflection().Index)
+		// Even though we can probably set the field based on the base type we want to do this just
+		// in case the target is a custom type based on a normal kind.
+		readValue := reflect.
+			ValueOf(valueReader.NextReflection(kind)).
+			Convert(fieldReflection.Type())
+		fieldReflection.Set(readValue)
 	}
 
 	return reflection, nil
