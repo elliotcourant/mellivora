@@ -10,8 +10,11 @@ type Database struct {
 	logger timber.Logger
 }
 
-func Open() *Database {
-	return nil
+func NewDatabase(store *meles.Store, logger timber.Logger) *Database {
+	return &Database{
+		store:  store,
+		logger: logger,
+	}
 }
 
 func (db *Database) Begin() (*Transaction, error) {
