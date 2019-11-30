@@ -121,7 +121,7 @@ func (q *Query) buildCriteria() [][]criteriaExpression {
 }
 
 func (q *Query) meetsCriteria(item reflect.Value, criteria [][]criteriaExpression) bool {
-	meetsCriteria := false
+	meetsCriteria := len(criteria) == 0
 	for _, criteriaGroup := range criteria {
 		meetsCriteriaGroup := true
 		for _, criteria := range criteriaGroup {
