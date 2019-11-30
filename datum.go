@@ -18,6 +18,7 @@ type (
 		Reflection() reflect.Value
 		Keys() (map[string][]byte, error)
 		Verify() (map[string]bool, error)
+		DatumPrefix() []byte
 	}
 
 	datumBuilderBase struct {
@@ -81,7 +82,7 @@ func (d *datumReaderBase) Read(key, value []byte) (reflect.Value, error) {
 	datumFields := d.Model().Fields().GetAll()
 	for _, field := range datumFields {
 		// Skip primary key fields since we already read those from the key.
-		if field.IsPrimaryKey() {
+		if field.IsPrimaryKey() || field.Reflection().Type.Kind() == reflect.Struct {
 			continue
 		}
 
@@ -160,6 +161,13 @@ func (d *datumBuilderBase) Keys() (map[string][]byte, error) {
 	return d.datums, nil
 }
 
+func (d *datumBuilderBase) DatumPrefix() []byte {
+	datumKeyBuf := buffers.NewBytesBuffer()
+	datumKeyBuf.AppendByte(datumKeyPrefix)
+	datumKeyBuf.AppendUint32(d.model.ModelId())
+	return datumKeyBuf.Bytes()
+}
+
 func (d *datumBuilderBase) encodeSingleDatum(value reflect.Value) error {
 	for value.Kind() == reflect.Ptr {
 		value = value.Elem()
@@ -179,7 +187,7 @@ func (d *datumBuilderBase) encodeSingleDatum(value reflect.Value) error {
 
 		datumValueBuf := buffers.NewBytesBuffer()
 		for _, fieldInfo := range d.model.Fields().GetAll() {
-			if fieldInfo.IsPrimaryKey() {
+			if fieldInfo.IsPrimaryKey() || fieldInfo.Reflection().Type.Kind() == reflect.Struct {
 				continue
 			}
 			datumValueBuf.AppendReflection(value.FieldByIndex(fieldInfo.Reflection().Index))

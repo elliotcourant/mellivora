@@ -79,7 +79,7 @@ func TestQuery_Where(t *testing.T) {
 }
 
 func TestQuery_InnerJoin(t *testing.T) {
-	t.Skip("still working on")
+	t.Skip("test")
 	type ParentItem struct {
 		ParentId  uint64 `m:"pk"`
 		Name      string

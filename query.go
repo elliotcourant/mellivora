@@ -22,11 +22,11 @@ type Query struct {
 }
 
 func (q *Query) InnerJoin(relatedModel interface{}) *Query {
-	return nil
+	return q
 }
 
 func (q *Query) LeftJoin(relatedModel interface{}) *Query {
-	return nil
+	return q
 }
 
 func (q *Query) Where(expression ...Ex) *Query {
@@ -56,12 +56,24 @@ func (q *Query) Select(destination interface{}) error {
 			fieldParts := strings.Split(fieldName, ".")
 			switch len(fieldParts) {
 			case 1:
-				criteriaGroup = append(criteriaGroup, func(datum reflect.Value) bool {
-					field := q.model.Fields().GetByName(fieldName)
+				switch reflect.TypeOf(value).Kind() {
+				case reflect.Slice, reflect.Array:
+					// TODO (elliotcourant) build "in" query support.
+					criteriaGroup = append(criteriaGroup, func(datum reflect.Value) bool {
+						field := q.model.Fields().GetByName(fieldName)
 
-					// TODO (elliotcourant) build a better comparision system.
-					return fmt.Sprint(value) == fmt.Sprint(datum.FieldByIndex(field.Reflection().Index).Interface())
-				})
+						// TODO (elliotcourant) build a better comparision system.
+						return fmt.Sprint(value) == fmt.Sprint(datum.FieldByIndex(field.Reflection().Index).Interface())
+					})
+				default:
+					criteriaGroup = append(criteriaGroup, func(datum reflect.Value) bool {
+						field := q.model.Fields().GetByName(fieldName)
+
+						// TODO (elliotcourant) build a better comparision system.
+						return fmt.Sprint(value) == fmt.Sprint(datum.FieldByIndex(field.Reflection().Index).Interface())
+					})
+				}
+
 			default:
 				panic("indirect fields not implemented")
 			}
@@ -69,10 +81,11 @@ func (q *Query) Select(destination interface{}) error {
 		criteriaGroups = append(criteriaGroups, criteriaGroup)
 	}
 
-	itr := q.txn.iterator()
+	itr := q.txn.iterator(true)
 	items := make([]reflect.Value, 0)
 	reader := newDatumReader(q.model)
-	for itr.Seek([]byte{datumKeyPrefix}); itr.ValidForPrefix([]byte{datumKeyPrefix}); itr.Next() {
+	prefix := newDatumBuilder(q.model, q.destination, false).DatumPrefix()
+	for itr.Seek(prefix); itr.ValidForPrefix(prefix); itr.Next() {
 		item := itr.Item()
 		key, value, err := make([]byte, 0), make([]byte, 0), error(nil)
 		key = item.KeyCopy(key)

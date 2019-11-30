@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	_ Relation            = &relation{}
 	_ Model               = &modelInfo{}
 	_ Field               = &modelField{}
 	_ FieldSet            = &fieldSet{}
@@ -25,6 +26,15 @@ type (
 		Fields() FieldSet
 		PrimaryKey() FieldSet
 		UniqueConstraints() UniqueConstraintSet
+		Relations()
+	}
+
+	Relation interface {
+		RelationId() uint32
+		Name() string
+		LocalField() Field
+		RemoteField() Field
+		RemoteModel() Model
 	}
 
 	Field interface {
@@ -52,6 +62,33 @@ type (
 		GetByName(uniqueConstraintName string) UniqueConstraint
 	}
 )
+
+type relation struct {
+	relationId  uint32
+	name        string
+	localField  Field
+	remoteField Field
+}
+
+func (r *relation) RelationId() uint32 {
+	return r.relationId
+}
+
+func (r *relation) Name() string {
+	return r.name
+}
+
+func (r *relation) LocalField() Field {
+	return r.localField
+}
+
+func (r *relation) RemoteField() Field {
+	return r.remoteField
+}
+
+func (r *relation) RemoteModel() Model {
+	return r.remoteField.(*modelField).model
+}
 
 type uniqueConstraint struct {
 	uniqueConstraintId uint32
@@ -100,6 +137,10 @@ type modelInfo struct {
 	fields            FieldSet
 	primaryKey        FieldSet
 	uniqueConstraints UniqueConstraintSet
+}
+
+func (m *modelInfo) Relations() {
+	panic("implement me")
 }
 
 func (m *modelInfo) Type() reflect.Type {
@@ -237,7 +278,12 @@ func getModelInfo(model interface{}) Model {
 			switch key {
 			case "pk":
 				field.isPrimaryKey = true
-			case "unique":
+			case "fk":
+				if len(value) == 0 {
+					panic("must specify fk field")
+				}
+
+			case "unique", "uq":
 				if len(value) == 0 {
 					value = fmt.Sprintf("`uq_%d", rand.Uint32())
 				}

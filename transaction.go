@@ -60,8 +60,11 @@ func (txn *Transaction) Insert(model interface{}) error {
 	return nil
 }
 
-func (txn *Transaction) iterator() *meles.Iterator {
+func (txn *Transaction) iterator(reset bool) *meles.Iterator {
 	if txn.itr == nil {
+		txn.itr = txn.tx.GetIterator(make([]byte, 0), false, false)
+	} else if reset {
+		txn.itr.Close()
 		txn.itr = txn.tx.GetIterator(make([]byte, 0), false, false)
 	}
 
