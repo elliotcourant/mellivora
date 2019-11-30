@@ -143,7 +143,9 @@ func (q *Query) meetsCriteria(item reflect.Value, criteria [][]criteriaExpressio
 func (q *Query) scanResults(items []reflect.Value) error {
 	switch q.destination.Kind() {
 	case reflect.Struct:
-		q.destination.Set(items[0])
+		if len(items) > 0 {
+			q.destination.Set(items[0])
+		}
 	case reflect.Array, reflect.Slice:
 		q.destination.Set(reflect.MakeSlice(q.destination.Type(), 0, q.destination.Cap()))
 		q.destination.Set(reflect.Append(q.destination, items...))
