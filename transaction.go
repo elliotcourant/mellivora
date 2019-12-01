@@ -20,10 +20,12 @@ func (txn *Transaction) Model(model interface{}) *Query {
 }
 
 func (txn *Transaction) Commit() error {
+	txn.disposeIterator()
 	return txn.tx.Commit()
 }
 
 func (txn *Transaction) Rollback() error {
+	txn.disposeIterator()
 	return txn.tx.Rollback()
 }
 
@@ -69,4 +71,10 @@ func (txn *Transaction) iterator(reset bool) *meles.Iterator {
 	}
 
 	return txn.itr
+}
+
+func (txn *Transaction) disposeIterator() {
+	if txn.itr != nil {
+		txn.itr.Close()
+	}
 }
